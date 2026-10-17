@@ -2,14 +2,16 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const userRoutes = require('./routes/userRoutes');
+const blogRoutes = require('./routes/blogRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 app.use(express.json());
 
 const MONGO_URI = process.env.MONGO_URI;
 
-app.use(userRoutes);
+app.use('/blogs', blogRoutes);
+app.use(authRoutes);
 
 const PORT = process.env.PORT;
 
