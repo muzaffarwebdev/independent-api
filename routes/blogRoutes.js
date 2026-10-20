@@ -22,5 +22,6 @@ router.get('/:id', getBlogById);
 // Protected routes (auth required)
 router.post('/', authenticateToken, blogValidation, createBlog);        
 router.patch('/:id', authenticateToken, blogValidation, updateBlog);    
-router.delete('/:id', authenticateToken, deleteBlog);  
+router.delete('/:id', authenticateToken, deleteBlog); 
+ 
 module.exports = router;

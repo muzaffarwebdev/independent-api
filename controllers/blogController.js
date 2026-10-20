@@ -1,11 +1,11 @@
 //controllers/blogControllers.js
 const Blog = require('../models/blog');
 const mongoose = require('mongoose');
+const blogService = require('../services/blogService');
 
-// get all 
 const getBlogs = async (req, res) => {
     try {
-        const blogs = await Blog.find();
+        const blogs = await blogService.getBlogs();
         res.status(200).json({
             success: true,
             message: "Blogs fetched successfully",
@@ -20,7 +20,6 @@ const getBlogs = async (req, res) => {
     }
 };
 
-// getBlogById
 const getBlogById = async(req, res) => {
     try {
 
@@ -32,7 +31,7 @@ const getBlogById = async(req, res) => {
             message: "Invalid blog ID"
         });
     }
-        const blog = await Blog.findById(req.params.id);
+        const blog = await blogService.getBlogById(id);
 
         if(!blog) {
         return res.status(404).json({
@@ -59,12 +58,11 @@ const createBlog = async(req, res) => {
     try {
         const { title, content } = req.body;  
 
-        const blog = new Blog({
+        const blog = await blogService.createBlog({
             title,
             content,
             author: req.user.userId,
         });
-        await blog.save();
 
         res.status(201).json({
             success: true,
@@ -83,55 +81,46 @@ const createBlog = async(req, res) => {
 //updateBlog
 const updateBlog = async (req, res) => {
     try {
-
-        const { title, content } = req.body;
         const { id } = req.params;
+        const { title, content } = req.body;
+        const userId = req.user.userId;
 
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({
-            success: false,
-            message: "Invalid blog ID"
+        const updateData = {};
+
+        if(title !== undefined) {
+            updateData.title = title;
+        }
+
+        if(content !== undefined) {
+            updateData.content = content;
+        }
+
+        const updatedBlog = await blogService.updateBlog(
+            id,
+            userId,
+            updateData
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Blog updated successfully',
+            data: updatedBlog
         });
-    }
-
-        // Find blog
-        const blog = await Blog.findById(id);
-
-        // Blog not found
-        if (!blog) {
-            return res.status(404).json({
-                success: false,
-                message: "Blog not found"
-            });
-        }
-
-        // Ownership check
-        if (!blog.author || blog.author.toString() !== req.user.userId) {
-            return res.status(403).json({
-                success: false,
-                message: "You are not allowed to update this blog"
-            });
-        }
-
-        // Update only provided fields
-        if (title !== undefined) {
-            blog.title = title;
-        }
-
-        if (content !== undefined) {
-            blog.content = content;
-        }
-
-        // Save updated blog
-        const updatedBlog = await blog.save();
-
-            res.status(200).json({
-                success: true,
-                message: "Blog updated successfully",
-                data: updatedBlog
-            });
     } catch (error) {
         console.error('updateBlog error:', error);
+
+        if (error.message === 'Blog not found') {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
+        if (error.message === 'You cannot update this blog') {
+            return res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
         res.status(500).json({
             success: false,
             message: 'Something went wrong'
@@ -152,31 +141,27 @@ const deleteBlog = async (req, res) => {
             message: "Invalid blog ID"
         });
     }
-
-        const blog = await Blog.findById(id); // find blog by id
-
-        if(!blog) {
-            return res.status(404).json({ 
-                success: false,
-                message: "Blog not found",
-            });
-        }
-
-        // ownership check
-        if(!blog.author || blog.author.toString() !== req.user.userId) {
-            return res.status(403).json({
-                success: false, 
-                message: "You are not allowed to delete this blog",
-            });
-        }
-
-        await Blog.findByIdAndDelete(id);
+        await blogService.deleteBlog(id, req.user.userId);
 
         res.status(200).json({ 
             success: true,
             message: "Blog deleted successfully"
         });
     } catch (error) {
+        if (error.message === "Blog not found") {
+            return res.status(404).json({
+                success: false,
+                message: error.message
+            });
+        }
+
+        if (error.message === "You are not allowed to delete this blog") {
+            return res.status(403).json({
+                success: false,
+                message: error.message
+            });
+        }
+
         console.error('deleteBlog error', error);
         res.status(500).json({
             success: false,
@@ -185,12 +170,11 @@ const deleteBlog = async (req, res) => {
     }
 };
 
-//getMyBlogs
 const getMyBlogs = async(req, res) => {
     try {
-        const blogs = await Blog.find({
-        author: req.user.userId
-    });
+        const blogs = await blogService.getMyBlogs(
+        req.user.userId
+    );
 
     res.status(200).json({
         success: true,
